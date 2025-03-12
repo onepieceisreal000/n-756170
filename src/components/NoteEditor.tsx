@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNotes } from '@/context/NotesContext';
 import { cn } from '@/lib/utils';
@@ -10,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { motion, AnimatePresence } from 'framer-motion';
+import AISuggestions from './AISuggestions';
 import {
   Bold,
   Italic,
@@ -32,6 +32,8 @@ import {
   Save,
   Undo,
   Redo,
+  Sparkles,
+  Bot,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
@@ -70,14 +72,14 @@ const NoteEditor = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showAI, setShowAI] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load note data when a note is selected
   useEffect(() => {
     if (selectedNote) {
       setTitle(selectedNote.title);
       setContent(selectedNote.content);
-      // Reset history when switching notes
       setHistory([selectedNote.content]);
       setHistoryIndex(0);
     } else {
@@ -88,18 +90,15 @@ const NoteEditor = () => {
     }
   }, [selectedNote]);
 
-  // Auto-save functionality
   useEffect(() => {
     if (selectedNote && (title !== selectedNote.title || content !== selectedNote.content)) {
-      // Clear any existing timer
       if (autoSaveTimer) {
         clearTimeout(autoSaveTimer);
       }
       
-      // Set a new timer for auto-save
       const timer = setTimeout(() => {
         saveNote();
-      }, 1000); // Auto-save after 1 second of inactivity
+      }, 1000);
       
       setAutoSaveTimer(timer);
     }
@@ -111,12 +110,10 @@ const NoteEditor = () => {
     };
   }, [title, content]);
 
-  // Add to history when content changes
   useEffect(() => {
     if (content && historyIndex >= 0 && content !== history[historyIndex]) {
-      // Add new content to history, truncating any redo states
       const newHistory = [...history.slice(0, historyIndex + 1), content];
-      if (newHistory.length > 50) {  // Limit history to 50 entries
+      if (newHistory.length > 50) {
         newHistory.shift();
       }
       setHistory(newHistory);
@@ -124,7 +121,6 @@ const NoteEditor = () => {
     }
   }, [content]);
 
-  // Handle undo
   const handleUndo = () => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
@@ -133,7 +129,6 @@ const NoteEditor = () => {
     }
   };
 
-  // Handle redo
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
@@ -142,13 +137,11 @@ const NoteEditor = () => {
     }
   };
 
-  // Save the note
   const saveNote = () => {
     if (!selectedNote) return;
     
     setIsSaving(true);
     
-    // Update the note
     updateNote(selectedNote.id, {
       title,
       content,
@@ -164,7 +157,6 @@ const NoteEditor = () => {
     });
   };
 
-  // Handle the deletion of a note
   const handleDeleteNote = () => {
     if (!selectedNote) return;
     
@@ -173,13 +165,11 @@ const NoteEditor = () => {
     setIsDeleting(false);
   };
 
-  // Format the last saved time
   const formatLastSaved = () => {
     if (!lastSaved) return '';
     return `Last saved ${format(lastSaved, 'h:mm a')}`;
   };
 
-  // Insert text into the content at the current cursor position
   const insertText = (before: string, after: string = '') => {
     if (!textareaRef.current) return;
     
@@ -191,14 +181,12 @@ const NoteEditor = () => {
     
     setContent(newContent);
     
-    // Focus back on the textarea and set the cursor position
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
     }, 0);
   };
 
-  // Formatting options
   const formatOptions = [
     {
       icon: Bold,
@@ -274,7 +262,27 @@ const NoteEditor = () => {
     },
   ];
 
-  // If no note is selected, display an empty state
+  const applySuggestion = (suggestion: string) => {
+    if (!suggestion) return;
+    setContent(content + ' ' + suggestion);
+    
+    toast({
+      title: "AI suggestion applied",
+      description: "The suggestion has been added to your note.",
+      duration: 2000,
+    });
+    
+    if (historyIndex >= 0) {
+      const newContent = content + ' ' + suggestion;
+      const newHistory = [...history.slice(0, historyIndex + 1), newContent];
+      if (newHistory.length > 50) {
+        newHistory.shift();
+      }
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  };
+
   if (!selectedNote) {
     return (
       <div className="h-full flex items-center justify-center p-8 bg-background">
@@ -310,7 +318,27 @@ const NoteEditor = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Move to folder dropdown */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 w-8 p-0", 
+                    aiEnabled && "text-primary"
+                  )}
+                  onClick={() => setAiEnabled(!aiEnabled)}
+                >
+                  <Sparkles size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {aiEnabled ? "Disable AI assistant" : "Enable AI assistant"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -349,7 +377,6 @@ const NoteEditor = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Tags dropdown */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -428,7 +455,6 @@ const NoteEditor = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Pin button */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -451,7 +477,6 @@ const NoteEditor = () => {
             </Tooltip>
           </TooltipProvider>
           
-          {/* Delete button */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -486,7 +511,7 @@ const NoteEditor = () => {
             </TabsList>
             
             {activeTab === 'write' && (
-              <div className="flex items-center py-1">
+              <div className="flex items-center py-1 overflow-x-auto scrollbar-none">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -548,7 +573,7 @@ const NoteEditor = () => {
           </div>
         </div>
         
-        <TabsContent value="write" className="flex-1 overflow-hidden">
+        <TabsContent value="write" className="flex-1 overflow-hidden relative">
           <ScrollArea className="h-full">
             <textarea
               ref={textareaRef}
@@ -558,6 +583,8 @@ const NoteEditor = () => {
               className="w-full h-full min-h-[calc(100vh-12rem)] p-4 resize-none bg-transparent border-none focus:outline-none font-mono"
             />
           </ScrollArea>
+          
+          {aiEnabled && <AISuggestions content={content} onApplySuggestion={applySuggestion} />}
         </TabsContent>
         
         <TabsContent value="preview" className="flex-1 overflow-hidden">

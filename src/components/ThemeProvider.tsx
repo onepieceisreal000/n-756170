@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system' | 'cyberpunk' | 'midnight';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -34,7 +34,8 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
     
-    root.classList.remove('light', 'dark');
+    // Remove all theme classes
+    root.classList.remove('light', 'dark', 'cyberpunk', 'midnight');
     
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')

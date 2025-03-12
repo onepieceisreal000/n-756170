@@ -81,6 +81,84 @@
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
   }
+  
+  /* Cyberpunk theme */
+  .cyberpunk {
+    --background: 275 10% 10%;
+    --foreground: 320 100% 80%;
+    
+    --note-bg: 275 15% 12%;
+    --note-fg: 320 100% 85%;
+    
+    --sidebar-bg: 275 20% 8%;
+    --sidebar-fg: 320 100% 80%;
+    --sidebar-hover: 300 70% 20%;
+    --sidebar-active: 320 100% 60%;
+    
+    --card: 275 15% 12%;
+    --card-foreground: 320 100% 80%;
+    
+    --popover: 275 15% 12%;
+    --popover-foreground: 320 100% 80%;
+    
+    --primary: 320 100% 60%;
+    --primary-foreground: 275 10% 10%;
+    
+    --secondary: 300 70% 20%;
+    --secondary-foreground: 320 100% 85%;
+    
+    --muted: 290 50% 15%;
+    --muted-foreground: 320 70% 70%;
+    
+    --accent: 300 70% 20%;
+    --accent-foreground: 320 100% 80%;
+    
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 275 10% 10%;
+    
+    --border: 300 60% 25%;
+    --input: 290 50% 15%;
+    --ring: 320 100% 60%;
+  }
+  
+  /* Midnight theme */
+  .midnight {
+    --background: 220 40% 10%;
+    --foreground: 210 40% 98%;
+    
+    --note-bg: 220 40% 13%;
+    --note-fg: 210 40% 98%;
+    
+    --sidebar-bg: 220 40% 8%;
+    --sidebar-fg: 210 40% 98%;
+    --sidebar-hover: 220 40% 15%;
+    --sidebar-active: 200 100% 60%;
+    
+    --card: 220 40% 13%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 220 40% 13%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 200 100% 60%;
+    --primary-foreground: 220 40% 10%;
+    
+    --secondary: 220 30% 20%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 220 30% 20%;
+    --muted-foreground: 210 40% 80%;
+    
+    --accent: 220 30% 20%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 80% 50%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 200 100% 60%;
+  }
 }
 
 @layer base {
@@ -194,6 +272,48 @@
     @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-background;
   }
   
+  /* Futuristic UI elements */
+  .neo-glass {
+    @apply backdrop-blur-lg bg-background/30 border border-primary/20 shadow-lg;
+  }
+  
+  .glow {
+    box-shadow: 0 0 10px theme('colors.primary.DEFAULT'), 
+                0 0 20px theme('colors.primary.DEFAULT');
+  }
+  
+  .glow-text {
+    text-shadow: 0 0 5px theme('colors.primary.DEFAULT');
+  }
+  
+  .cyber-border {
+    @apply border-2 border-primary relative;
+    clip-path: polygon(
+      0% 5px, 5px 0%, calc(100% - 5px) 0%, 100% 5px,
+      100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0% calc(100% - 5px)
+    );
+  }
+  
+  .scanline {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 100% 4px;
+    animation: scanline 8s linear infinite;
+  }
+  
+  @keyframes scanline {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 0 100%;
+    }
+  }
+  
   .ripple {
     position: relative;
     overflow: hidden;
@@ -211,5 +331,83 @@
     transform: translate(-50%, -50%) scale(0);
     animation: ripple 0.6s ease-out;
     pointer-events: none;
+  }
+  
+  /* Typing indicator animation */
+  .typing-indicator {
+    display: inline-flex;
+  }
+  
+  .typing-indicator span {
+    width: 4px;
+    height: 4px;
+    margin: 0 1px;
+    background-color: currentColor;
+    border-radius: 50%;
+    animation: typing 1.5s infinite ease-in-out;
+  }
+  
+  .typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  
+  @keyframes typing {
+    0%, 60%, 100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-4px);
+    }
+  }
+  
+  /* AI-assistant specific styles */
+  .ai-message {
+    @apply bg-primary/10 border-l-2 border-primary p-2 rounded-r-md;
+  }
+  
+  .ai-suggestion {
+    @apply cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99];
+  }
+  
+  .ai-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary;
+  }
+  
+  .ai-processing {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .ai-processing::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(var(--primary), 0.2) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s infinite;
+  }
+  
+  @keyframes shimmer {
+    100% {
+      left: 100%;
+    }
+  }
+  
+  @keyframes ripple {
+    to {
+      transform: translate(-50%, -50%) scale(4);
+      opacity: 0;
+    }
   }
 }

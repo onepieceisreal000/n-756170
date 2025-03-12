@@ -2,7 +2,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-	darkMode: ["class"],
+	darkMode: ["class", ".dark", ".cyberpunk", ".midnight"],
 	content: [
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
@@ -106,6 +106,18 @@ export default {
 					'0%': { transform: 'scale(0)', opacity: '0.7' },
 					'100%': { transform: 'scale(4)', opacity: '0' },
 				},
+                'pulse-glow': {
+                    '0%, 100%': { 
+                        boxShadow: '0 0 5px theme("colors.primary.DEFAULT"), 0 0 10px theme("colors.primary.DEFAULT")' 
+                    },
+                    '50%': { 
+                        boxShadow: '0 0 15px theme("colors.primary.DEFAULT"), 0 0 20px theme("colors.primary.DEFAULT")' 
+                    },
+                },
+                'shimmer': {
+                    '0%': { backgroundPosition: '-200% 0' },
+                    '100%': { backgroundPosition: '200% 0' },
+                },
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -116,6 +128,8 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out',
 				'float': 'float 6s ease-in-out infinite',
 				'ripple': 'ripple 0.6s linear forwards',
+                'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+                'shimmer': 'shimmer 3s ease-in-out infinite',
 			},
 			backdropFilter: {
 				'none': 'none',
@@ -124,6 +138,7 @@ export default {
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 				'gradient-soft': 'linear-gradient(to right bottom, var(--tw-gradient-stops))',
+                'cyber-grid': 'linear-gradient(transparent 97%, theme("colors.primary.DEFAULT") 3%), linear-gradient(90deg, transparent 97%, theme("colors.primary.DEFAULT") 3%)',
 			},
 		}
 	},

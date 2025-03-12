@@ -52,18 +52,32 @@ const Layout = () => {
         </div>
       )}
 
-      {/* Theme toggle and sidebar toggle for desktop */}
-      <div className="absolute top-4 left-4 z-50 flex items-center gap-1">
+      {/* App header with controls moved to top right */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
         {!isMobile && (
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="h-8 w-8 rounded-full"
             title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
           >
-            {sidebarOpen ? <PanelLeftClose size={18} /> : <Menu size={18} />}
+            {sidebarOpen ? <PanelLeftClose size={16} /> : <Menu size={16} />}
           </Button>
         )}
+        
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            onClick={() => setNoteListOpen(!noteListOpen)}
+            title={noteListOpen ? "Hide note list" : "Show note list"}
+          >
+            {noteListOpen ? <PanelRightClose size={16} /> : <ChevronRight size={16} />}
+          </Button>
+        )}
+        
         <ThemeToggle />
       </div>
 
@@ -104,19 +118,6 @@ const Layout = () => {
           >
             {noteListOpen && <NoteList />}
           </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "absolute top-4 z-50 transition-all duration-300 ease-in-out",
-              sidebarOpen ? "left-68" : "left-16"
-            )}
-            onClick={() => setNoteListOpen(!noteListOpen)}
-            title={noteListOpen ? "Hide note list" : "Show note list"}
-          >
-            {noteListOpen ? <PanelRightClose size={18} /> : <ChevronRight size={18} />}
-          </Button>
 
           <div className="flex-1 h-full">
             {showWelcome && !selectedNote ? <WelcomeScreen /> : <NoteEditor />}
