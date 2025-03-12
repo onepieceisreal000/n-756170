@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNotes } from '@/context/NotesContext';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,6 +41,7 @@ import {
   Sun,
   SunMoon,
   ChevronRight,
+  Upload,
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -60,6 +61,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const NoteEditor = () => {
   const { 
@@ -87,7 +89,10 @@ const NoteEditor = () => {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [noteListOpen, setNoteListOpen] = useState(true);
+  const [imageUploadOpen, setImageUploadOpen] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selectedNote) {
@@ -183,7 +188,27 @@ const NoteEditor = () => {
     return `Last saved ${format(lastSaved, 'h:mm a')}`;
   };
 
-  const insertText = (before: string, after: string = '') => {
+  const insertText = useCallback((before: string, after: string = '') => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const newContent = content.substring(0, start) + before + selectedText + after + content.substring(end);
+    
+    setContent(newContent);
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = selectedText.length > 0 
+        ? start + before.length + selectedText.length + after.length 
+        : start + before.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  }, [content, textareaRef]);
+
+  const insertTextWithSelection = useCallback((before: string, after: string = '') => {
     if (!textareaRef.current) return;
     
     const textarea = textareaRef.current;
@@ -198,55 +223,186 @@ const NoteEditor = () => {
       textarea.focus();
       textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
     }, 0);
+  }, [content, textareaRef]);
+
+  const handleImageUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const processImageUpload = async (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const markdownImage = `![${file.name}](${base64String})`;
+      insertText(markdownImage);
+      setImageUploadOpen(false);
+      setUploadedImage(null);
+      
+      toast({
+        title: "Image inserted",
+        description: "The image has been added to your note.",
+        duration: 2000,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Images must be less than 5MB.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Only image files are allowed.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+      
+      setUploadedImage(file);
+      setImageUploadOpen(true);
+    }
   };
 
   const formatOptions = [
     {
       icon: Bold,
       title: 'Bold',
-      onClick: () => insertText('**', '**'),
+      onClick: () => insertTextWithSelection('**', '**'),
       shortcut: '⌘B',
     },
     {
       icon: Italic,
       title: 'Italic',
-      onClick: () => insertText('*', '*'),
+      onClick: () => insertTextWithSelection('*', '*'),
       shortcut: '⌘I',
     },
     {
       icon: Heading1,
       title: 'Heading 1',
-      onClick: () => insertText('# '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '# ' + lineContent.replace(/^#+ /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
       icon: Heading2,
       title: 'Heading 2',
-      onClick: () => insertText('## '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '## ' + lineContent.replace(/^#+ /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
       icon: List,
       title: 'Bullet List',
-      onClick: () => insertText('- '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '- ' + lineContent.replace(/^[-*+] /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
       icon: ListOrdered,
       title: 'Numbered List',
-      onClick: () => insertText('1. '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '1. ' + lineContent.replace(/^\d+\. /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
       icon: Check,
       title: 'Checkbox',
-      onClick: () => insertText('- [ ] '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '- [ ] ' + lineContent.replace(/^- \[[ x]\] /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
       icon: Quote,
       title: 'Blockquote',
-      onClick: () => insertText('> '),
+      onClick: () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const start = textarea.selectionStart;
+        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+        const beforeText = content.substring(0, lineStart);
+        const lineEnd = content.indexOf('\n', start);
+        const lineContent = content.substring(lineStart, lineEnd > -1 ? lineEnd : content.length);
+        const afterText = content.substring(lineEnd > -1 ? lineEnd : content.length);
+        
+        const newContent = beforeText + '> ' + lineContent.replace(/^> /, '') + afterText;
+        setContent(newContent);
+      },
       shortcut: null,
     },
     {
@@ -258,13 +414,26 @@ const NoteEditor = () => {
     {
       icon: Link,
       title: 'Link',
-      onClick: () => insertText('[', '](url)'),
+      onClick: () => {
+        const selection = window.getSelection()?.toString();
+        if (selection) {
+          insertTextWithSelection('[', '](url)');
+        } else {
+          insertText('[Link text](url)');
+        }
+      },
       shortcut: null,
     },
     {
       icon: ImageIcon,
       title: 'Image',
-      onClick: () => insertText('![alt text](', ')'),
+      onClick: handleImageUpload,
+      shortcut: null,
+    },
+    {
+      icon: Upload,
+      title: 'Upload Image',
+      onClick: handleImageUpload,
       shortcut: null,
     },
     {
@@ -331,9 +500,7 @@ const NoteEditor = () => {
           </div>
         </div>
         
-        {/* Editor Controls Group - Repositioned */}
         <div className="flex items-center space-x-2">
-          {/* Theme & Layout Controls */}
           <div className="flex items-center mr-2 border-r border-border pr-2">
             {!isMobile && (
               <TooltipProvider>
@@ -448,7 +615,6 @@ const NoteEditor = () => {
             </Popover>
           </div>
           
-          {/* AI Assistant Toggle */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -731,6 +897,56 @@ const NoteEditor = () => {
           </ScrollArea>
         </TabsContent>
       </Tabs>
+
+      <input 
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      <Dialog open={imageUploadOpen} onOpenChange={setImageUploadOpen}>
+        <DialogContent>
+          <DialogTitle>Insert Image</DialogTitle>
+          <DialogDescription>
+            Preview and confirm your image upload
+          </DialogDescription>
+          
+          <div className="flex flex-col items-center justify-center p-4 space-y-4">
+            {uploadedImage && (
+              <div className="border rounded-md overflow-hidden max-w-full max-h-64">
+                <img 
+                  src={URL.createObjectURL(uploadedImage)} 
+                  alt="Preview" 
+                  className="object-contain max-h-64"
+                />
+              </div>
+            )}
+            
+            <div className="flex justify-end w-full space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setImageUploadOpen(false);
+                  setUploadedImage(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (uploadedImage) {
+                    processImageUpload(uploadedImage);
+                  }
+                }}
+              >
+                Insert Image
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
