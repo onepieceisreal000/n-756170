@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -30,6 +29,8 @@ interface NotesContextProps {
   setSearchQuery: (query: string) => void;
   togglePinNote: (id: string) => void;
   getFilteredNotes: () => Note[];
+  reorderFolders: (folderIds: string[]) => void;
+  reorderTags: (tagIds: string[]) => void;
 }
 
 const defaultStore: NoteStore = {
@@ -344,6 +345,41 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  // Reorder folders
+  const reorderFolders = (folderIds: string[]) => {
+    // Get the default folder and user folders
+    const defaultFolder = store.folders.find(folder => folder.id === 'default');
+    const userFolders = store.folders.filter(folder => folder.id !== 'default');
+    
+    // Create a new array with the reordered folders
+    const orderedFolders = folderIds.map(
+      id => userFolders.find(folder => folder.id === id)
+    ).filter(Boolean) as Folder[];
+    
+    // Make sure the default folder is always first
+    const newFolders = defaultFolder 
+      ? [defaultFolder, ...orderedFolders]
+      : orderedFolders;
+    
+    setStore({
+      ...store,
+      folders: newFolders
+    });
+  };
+
+  // Reorder tags
+  const reorderTags = (tagIds: string[]) => {
+    // Create a new array with the reordered tags
+    const orderedTags = tagIds.map(
+      id => store.tags.find(tag => tag.id === id)
+    ).filter(Boolean) as Tag[];
+    
+    setStore({
+      ...store,
+      tags: orderedTags
+    });
+  };
+
   // Get filtered notes based on selected folder, tag, and search query
   const getFilteredNotes = () => {
     let filteredNotes = store.notes;
@@ -551,6 +587,8 @@ Enjoy using Notes App!
         setSearchQuery,
         togglePinNote,
         getFilteredNotes,
+        reorderFolders,
+        reorderTags,
       }}
     >
       {children}
