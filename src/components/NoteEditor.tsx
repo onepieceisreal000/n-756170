@@ -6,6 +6,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bold,
   Italic,
@@ -16,7 +20,7 @@ import {
   Heading2,
   Code,
   Link,
-  Image,
+  Image as ImageIcon,
   Minus,
   Check,
   Trash,
@@ -26,6 +30,8 @@ import {
   X,
   Folder as FolderIcon,
   Save,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
@@ -35,7 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 const NoteEditor = () => {
   const { 
@@ -51,6 +64,8 @@ const NoteEditor = () => {
   const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
@@ -62,9 +77,14 @@ const NoteEditor = () => {
     if (selectedNote) {
       setTitle(selectedNote.title);
       setContent(selectedNote.content);
+      // Reset history when switching notes
+      setHistory([selectedNote.content]);
+      setHistoryIndex(0);
     } else {
       setTitle('');
       setContent('');
+      setHistory([]);
+      setHistoryIndex(-1);
     }
   }, [selectedNote]);
 
@@ -91,6 +111,37 @@ const NoteEditor = () => {
     };
   }, [title, content]);
 
+  // Add to history when content changes
+  useEffect(() => {
+    if (content && historyIndex >= 0 && content !== history[historyIndex]) {
+      // Add new content to history, truncating any redo states
+      const newHistory = [...history.slice(0, historyIndex + 1), content];
+      if (newHistory.length > 50) {  // Limit history to 50 entries
+        newHistory.shift();
+      }
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  }, [content]);
+
+  // Handle undo
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  };
+
+  // Handle redo
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  };
+
   // Save the note
   const saveNote = () => {
     if (!selectedNote) return;
@@ -105,6 +156,12 @@ const NoteEditor = () => {
     
     setLastSaved(new Date());
     setIsSaving(false);
+    
+    toast({
+      title: "Note saved",
+      description: "Your note has been saved successfully.",
+      duration: 2000,
+    });
   };
 
   // Handle the deletion of a note
@@ -147,61 +204,73 @@ const NoteEditor = () => {
       icon: Bold,
       title: 'Bold',
       onClick: () => insertText('**', '**'),
+      shortcut: '⌘B',
     },
     {
       icon: Italic,
       title: 'Italic',
       onClick: () => insertText('*', '*'),
+      shortcut: '⌘I',
     },
     {
       icon: Heading1,
       title: 'Heading 1',
       onClick: () => insertText('# '),
+      shortcut: null,
     },
     {
       icon: Heading2,
       title: 'Heading 2',
       onClick: () => insertText('## '),
+      shortcut: null,
     },
     {
       icon: List,
       title: 'Bullet List',
       onClick: () => insertText('- '),
+      shortcut: null,
     },
     {
       icon: ListOrdered,
       title: 'Numbered List',
       onClick: () => insertText('1. '),
+      shortcut: null,
     },
     {
       icon: Check,
       title: 'Checkbox',
       onClick: () => insertText('- [ ] '),
+      shortcut: null,
     },
     {
       icon: Quote,
       title: 'Blockquote',
       onClick: () => insertText('> '),
+      shortcut: null,
     },
     {
       icon: Code,
       title: 'Code Block',
       onClick: () => insertText('```\n', '\n```'),
+      shortcut: null,
     },
     {
       icon: Link,
       title: 'Link',
       onClick: () => insertText('[', '](url)'),
+      shortcut: null,
     },
     {
-      icon: Image,
+      icon: ImageIcon,
       title: 'Image',
       onClick: () => insertText('![alt text](', ')'),
+      shortcut: null,
     },
     {
       icon: Minus,
       title: 'Divider',
       onClick: () => insertText('\n---\n'),
+      shortcut: null,
     },
   ];
 
@@ -219,67 +288,6 @@ const NoteEditor = () => {
       </div>
     );
   }
-
-  // Render the Markdown content
-  const renderMarkdown = () => {
-    // Use a simple Markdown parser - in a real app, you'd use a library like marked or remark
-    // For this example, we'll just wrap the content in a div with the prose class for styling
-    return (
-      <div className="prose p-4" dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(content) }} />
-    );
-  };
-
-  // A very simple Markdown parser (in a real app, use a proper library)
-  const simpleMarkdownToHtml = (text: string) => {
-    // Handle code blocks
-    text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-    
-    // Handle inline code
-    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
-    // Handle headings
-    text = text.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-    text = text.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-    text = text.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-    
-    // Handle bold and italic
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Handle links
-    text = text.replace(/\[([^\[]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
-    
-    // Handle images
-    text = text.replace(/!\[([^\[]+)\]\(([^\)]+)\)/g, '<img src="$2" alt="$1" />');
-    
-    // Handle lists
-    text = text.replace(/^\s*- \[ \] (.*$)/gm, '<div class="flex items-start"><input type="checkbox" class="mt-1 mr-2" disabled /> <div>$1</div></div>');
-    text = text.replace(/^\s*- \[x\] (.*$)/gm, '<div class="flex items-start"><input type="checkbox" class="mt-1 mr-2" checked disabled /> <div>$1</div></div>');
-    text = text.replace(/^\s*- (.*$)/gm, '<li>$1</li>');
-    text = text.replace(/^\s*\d+\. (.*$)/gm, '<li>$1</li>');
-    
-    // Wrap lists
-    text = text.replace(/<li>(.*?)<\/li>/g, function(match) {
-      if (match.indexOf('<input type="checkbox"') !== -1) {
-        return match;
-      }
-      return '<ul>' + match + '</ul>';
-    }).replace(/<\/ul><ul>/g, '');
-    
-    // Handle blockquotes
-    text = text.replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>');
-    
-    // Handle horizontal rules
-    text = text.replace(/^\s*---\s*$/gm, '<hr />');
-    
-    // Handle paragraphs
-    text = text.replace(/^(?!<[a-z])(.*$)/gm, function(match) {
-      if (match.trim() === '') return '';
-      return '<p>' + match + '</p>';
-    });
-    
-    return text;
-  };
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -317,6 +325,11 @@ const NoteEditor = () => {
                 value={selectedNote.folderId || 'default'}
                 onValueChange={(value) => {
                   updateNote(selectedNote.id, { folderId: value === 'default' ? null : value });
+                  toast({
+                    title: "Folder changed",
+                    description: `Note moved to ${folders.find(f => f.id === value)?.name || 'All Notes'}`,
+                    duration: 2000,
+                  });
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -355,19 +368,29 @@ const NoteEditor = () => {
                       const tag = tags.find(t => t.id === tagId);
                       if (!tag) return null;
                       return (
-                        <div 
+                        <motion.div 
                           key={tag.id} 
                           className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.2 }}
                         >
                           <div className={cn("w-2 h-2 rounded-full mr-1", tag.color)} />
                           <span>{tag.name}</span>
                           <button 
-                            onClick={() => removeTagFromNote(selectedNote.id, tag.id)}
+                            onClick={() => {
+                              removeTagFromNote(selectedNote.id, tag.id);
+                              toast({
+                                title: "Tag removed",
+                                description: `Tag "${tag.name}" removed from note`,
+                                duration: 1500,
+                              });
+                            }}
                             className="ml-1 text-muted-foreground hover:text-foreground"
                           >
                             <X size={12} />
                           </button>
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -381,14 +404,23 @@ const NoteEditor = () => {
                     {tags
                       .filter(tag => !selectedNote.tags.includes(tag.id))
                       .map(tag => (
-                        <button
+                        <motion.button
                           key={tag.id}
                           className="flex items-center w-full text-left text-sm px-2 py-1 rounded hover:bg-muted"
-                          onClick={() => addTagToNote(selectedNote.id, tag.id)}
+                          onClick={() => {
+                            addTagToNote(selectedNote.id, tag.id);
+                            toast({
+                              title: "Tag added",
+                              description: `Tag "${tag.name}" added to note`,
+                              duration: 1500,
+                            });
+                          }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                         >
                           <div className={cn("w-2 h-2 rounded-full mr-2", tag.color)} />
                           <span>{tag.name}</span>
-                        </button>
+                        </motion.button>
                       ))}
                   </div>
                 )}
@@ -397,31 +429,47 @@ const NoteEditor = () => {
           </Popover>
 
           {/* Pin button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("h-8 w-8 p-0", selectedNote.isPinned && "text-yellow-500")}
-            onClick={() => togglePinNote(selectedNote.id)}
-            title={selectedNote.isPinned ? "Unpin note" : "Pin note"}
-          >
-            {selectedNote.isPinned ? (
-              <Star size={16} fill="currentColor" />
-            ) : (
-              <Pin size={16} />
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-8 w-8 p-0", selectedNote.isPinned && "text-yellow-500")}
+                  onClick={() => togglePinNote(selectedNote.id)}
+                >
+                  {selectedNote.isPinned ? (
+                    <Star size={16} fill="currentColor" />
+                  ) : (
+                    <Pin size={16} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {selectedNote.isPinned ? "Unpin note" : "Pin note"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           {/* Delete button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-            onClick={handleDeleteNote}
-            disabled={isDeleting}
-            title="Delete note"
-          >
-            <Trash size={16} />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={handleDeleteNote}
+                  disabled={isDeleting}
+                >
+                  <Trash size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Delete note
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
       
@@ -439,17 +487,61 @@ const NoteEditor = () => {
             
             {activeTab === 'write' && (
               <div className="flex items-center py-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground"
+                        onClick={handleUndo}
+                        disabled={historyIndex <= 0}
+                      >
+                        <Undo size={16} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Undo</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground"
+                        onClick={handleRedo}
+                        disabled={historyIndex >= history.length - 1}
+                      >
+                        <Redo size={16} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Redo</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <Separator orientation="vertical" className="h-6 mx-2" />
+                
                 {formatOptions.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={option.onClick}
-                    title={option.title}
-                  >
-                    <option.icon size={16} />
-                  </Button>
+                  <TooltipProvider key={index}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={option.onClick}
+                        >
+                          <option.icon size={16} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {option.title}
+                        {option.shortcut && <span className="ml-2 text-xs opacity-70">{option.shortcut}</span>}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ))}
               </div>
             )}
@@ -470,7 +562,14 @@ const NoteEditor = () => {
         
         <TabsContent value="preview" className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
-            {renderMarkdown()}
+            <div className="p-4 prose dark:prose-invert prose-blue max-w-none">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
           </ScrollArea>
         </TabsContent>
       </Tabs>

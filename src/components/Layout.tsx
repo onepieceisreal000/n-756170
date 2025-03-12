@@ -1,28 +1,33 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import NoteList from './NoteList';
 import NoteEditor from './NoteEditor';
+import WelcomeScreen from './WelcomeScreen';
 import { useNotes } from '@/context/NotesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, PanelLeftClose, PanelRightClose } from 'lucide-react';
 import { 
   Sheet,
   SheetContent,
   SheetTrigger
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from './ThemeToggle';
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { selectedNote } = useNotes();
+const Layout = () => {
+  const { selectedNote, notes } = useNotes();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const [noteListOpen, setNoteListOpen] = React.useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [noteListOpen, setNoteListOpen] = useState(true);
+
+  // If no notes exist yet, show the welcome screen
+  const showWelcome = notes.length === 0;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile sidebar sheet */}
       {isMobile ? (
         <Sheet>
@@ -39,7 +44,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         /* Desktop sidebar */
         <div
           className={cn(
-            "h-full transition-all duration-300 ease-in-out",
+            "h-full transition-all duration-300 ease-in-out shadow-lg",
             sidebarOpen ? "w-64" : "w-0"
           )}
         >
@@ -47,18 +52,20 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       )}
 
-      {/* Sidebar toggle for desktop */}
-      {!isMobile && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 left-4 z-50"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-        >
-          {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-        </Button>
-      )}
+      {/* Theme toggle and sidebar toggle for desktop */}
+      <div className="absolute top-4 left-4 z-50 flex items-center gap-1">
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          >
+            {sidebarOpen ? <PanelLeftClose size={18} /> : <Menu size={18} />}
+          </Button>
+        )}
+        <ThemeToggle />
+      </div>
 
       {/* Mobile view - NoteList or Editor based on selection */}
       {isMobile ? (
@@ -83,7 +90,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         ) : (
           <div className="flex-1 h-full">
-            <NoteList />
+            {showWelcome ? <WelcomeScreen /> : <NoteList />}
           </div>
         )
       ) : (
@@ -103,16 +110,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             size="icon"
             className={cn(
               "absolute top-4 z-50 transition-all duration-300 ease-in-out",
-              sidebarOpen ? "left-68" : "left-4"
+              sidebarOpen ? "left-68" : "left-16"
             )}
             onClick={() => setNoteListOpen(!noteListOpen)}
             title={noteListOpen ? "Hide note list" : "Show note list"}
           >
-            {noteListOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+            {noteListOpen ? <PanelRightClose size={18} /> : <ChevronRight size={18} />}
           </Button>
 
           <div className="flex-1 h-full">
-            <NoteEditor />
+            {showWelcome && !selectedNote ? <WelcomeScreen /> : <NoteEditor />}
           </div>
         </>
       )}

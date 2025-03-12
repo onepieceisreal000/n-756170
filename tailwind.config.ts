@@ -102,6 +102,10 @@ export default {
 					'0%, 100%': { transform: 'translateY(0)' },
 					'50%': { transform: 'translateY(-5px)' },
 				},
+				'ripple': {
+					'0%': { transform: 'scale(0)', opacity: '0.7' },
+					'100%': { transform: 'scale(4)', opacity: '0' },
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -111,6 +115,7 @@ export default {
 				'slide-in': 'slide-in 0.2s ease-out',
 				'scale-in': 'scale-in 0.2s ease-out',
 				'float': 'float 6s ease-in-out infinite',
+				'ripple': 'ripple 0.6s linear forwards',
 			},
 			backdropFilter: {
 				'none': 'none',
@@ -118,6 +123,7 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+				'gradient-soft': 'linear-gradient(to right bottom, var(--tw-gradient-stops))',
 			},
 		}
 	},
