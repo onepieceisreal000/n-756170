@@ -34,7 +34,15 @@ import {
   Redo,
   Sparkles,
   Bot,
+  PanelLeftClose,
+  PanelRightClose,
+  Menu,
+  Moon,
+  Sun,
+  SunMoon,
+  ChevronRight,
 } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Select,
@@ -51,6 +59,7 @@ import {
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const NoteEditor = () => {
   const { 
@@ -63,6 +72,8 @@ const NoteEditor = () => {
     removeTagFromNote,
     togglePinNote,
   } = useNotes();
+  const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -74,6 +85,8 @@ const NoteEditor = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [noteListOpen, setNoteListOpen] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -317,7 +330,125 @@ const NoteEditor = () => {
             )}
           </div>
         </div>
+        
+        {/* Editor Controls Group - Repositioned */}
         <div className="flex items-center space-x-2">
+          {/* Theme & Layout Controls */}
+          <div className="flex items-center mr-2 border-r border-border pr-2">
+            {!isMobile && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSidebarOpen(!sidebarOpen)}
+                      className="h-8 w-8 p-0"
+                      title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                    >
+                      {sidebarOpen ? <PanelLeftClose size={16} /> : <Menu size={16} />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            
+            {!isMobile && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setNoteListOpen(!noteListOpen)}
+                      title={noteListOpen ? "Hide note list" : "Show note list"}
+                    >
+                      {noteListOpen ? <PanelRightClose size={16} /> : <ChevronRight size={16} />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {noteListOpen ? "Hide note list" : "Show note list"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {theme === 'dark' ? (
+                    <Moon size={16} />
+                  ) : theme === 'light' ? (
+                    <Sun size={16} />
+                  ) : theme === 'cyberpunk' ? (
+                    <Sparkles size={16} />
+                  ) : theme === 'midnight' ? (
+                    <Moon size={16} />
+                  ) : (
+                    <SunMoon size={16} />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Theme</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('light')}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Sun size={16} className="mr-2" />
+                      Light
+                    </Button>
+                    <Button
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('dark')}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Moon size={16} className="mr-2" />
+                      Dark
+                    </Button>
+                    <Button
+                      variant={theme === 'cyberpunk' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('cyberpunk')}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Sparkles size={16} className="mr-2" />
+                      Cyberpunk
+                    </Button>
+                    <Button
+                      variant={theme === 'midnight' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('midnight')}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Moon size={16} className="mr-2" />
+                      Midnight
+                    </Button>
+                    <Button
+                      variant={theme === 'system' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('system')}
+                      className="w-full justify-start text-left font-normal col-span-2"
+                    >
+                      <SunMoon size={16} className="mr-2" />
+                      System
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          {/* AI Assistant Toggle */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

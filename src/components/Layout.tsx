@@ -8,14 +8,13 @@ import { useNotes } from '@/context/NotesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Menu, PanelLeftClose, PanelRightClose } from 'lucide-react';
+import { ChevronLeft, Menu } from 'lucide-react';
 import { 
   Sheet,
   SheetContent,
   SheetTrigger
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from './ThemeToggle';
 
 const Layout = () => {
   const { selectedNote, notes } = useNotes();
@@ -51,35 +50,6 @@ const Layout = () => {
           {sidebarOpen && <Sidebar />}
         </div>
       )}
-
-      {/* App header with controls moved to top right */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="h-8 w-8 rounded-full"
-            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          >
-            {sidebarOpen ? <PanelLeftClose size={16} /> : <Menu size={16} />}
-          </Button>
-        )}
-        
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={() => setNoteListOpen(!noteListOpen)}
-            title={noteListOpen ? "Hide note list" : "Show note list"}
-          >
-            {noteListOpen ? <PanelRightClose size={16} /> : <ChevronRight size={16} />}
-          </Button>
-        )}
-        
-        <ThemeToggle />
-      </div>
 
       {/* Mobile view - NoteList or Editor based on selection */}
       {isMobile ? (

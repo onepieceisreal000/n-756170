@@ -40,12 +40,17 @@ export const getSuggestions = async (content: string): Promise<string> => {
   }
 };
 
-// Check grammar and suggest improvements
+// Check grammar and suggest improvements with a cleaner format
 export const checkGrammar = async (text: string): Promise<string> => {
   try {
     if (!text || text.length < 10) return "";
     
-    const prompt = `Check the following text for grammar issues and suggest improvements. Be concise and only point out actual problems: "${text}"`;
+    const prompt = `Review the following text for grammar and style issues. For each issue, provide clear feedback in this format:
+    
+    "Issue: [describe the grammar issue simply]
+    Correction: [provide the corrected version]"
+    
+    Keep feedback concise and focus only on actual grammar problems. Text to check: "${text}"`;
     
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
